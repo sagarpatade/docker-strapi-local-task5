@@ -1,43 +1,89 @@
-# 🐳 Dockerized Strapi v4 (Node 20)
+# 🐳 Dockerized Strapi with PostgreSQL & Nginx
 
-This project provides a production-ready **Docker container for Strapi v4 Headless CMS**.
+This project demonstrates a production-ready, multi-container environment for Strapi v4. It replaces the default SQLite database with **PostgreSQL** and uses **Nginx** as a reverse proxy to handle traffic on Port 80.
 
-It is explicitly engineered to solve compatibility issues between **Strapi v4** and **Node.js 20**, and includes build optimizations to keep the image size manageable on local machines.
+## 📋 Task Submission
+* **🎥 Demo Video:** [Click here to watch the Loom Video](https://www.loom.com/share/c597de33db434b419748625737f1267e)
+* **🔀 Pull Request:** [View PR #1 on GitHub](https://github.com/sagarpatade/docker-strapi-local-task5/pull/1)
 
-## 🚀 Features
+---
 
-* **Latest Tech Stack:** Runs on **Node.js 20 (Bullseye)**.
-* **Optimized Build:** Includes aggressive cache cleaning (`rm -rf /root/.npm`) to prevent "No Space Left on Device" errors during build.
-* **Stability Fixes:** Pre-configured with `ENV HOST=0.0.0.0` to prevent the common Strapi crash loop in containerized environments.
-* **Zero-Config Start:** Uses the `--quickstart` flag to set up a local SQLite database automatically.
+## 🏗 Architecture
+The application runs on a custom Docker network (`strapi-net`) to ensure secure, isolated communication between containers.
 
-## 🛠 Prerequisites
+```mermaid
+graph LR
+    User(Browser) -- Port 80 --> Nginx
+    subgraph "Docker Network: strapi-net"
+    Nginx -- Proxy --> Strapi(Port 1337)
+    Strapi -- Database Connection --> Postgres(Port 5432)
+    end
+Nginx: Reverse Proxy (Exposed on Port 80)
 
-* **Docker Desktop** (or Docker Engine on Linux)
-* **Git**
+Strapi: Headless CMS (Internal Port 1337)
 
-## 🏃‍♂️ Quick Start
+PostgreSQL: Database (Internal Port 5432)
 
-### 1. Clone the Repository
-```bash
-git clone [https://github.com/YOUR_USERNAME/docker-strapi-local.git](https://github.com/YOUR_USERNAME/docker-strapi-local.git)
-cd docker-strapi-local
-2. Build the Docker Image
-This step installs Node 20, builds the Strapi Admin panel, and optimizes storage.
-
-Bash
-
-docker build -t strapi-local .
-3. Run the Container
-Map port 1337 to access the CMS.
+🚀 How to Run
+1. Create the Network
+Create a user-defined bridge network for container communication.
 
 Bash
 
-docker run -p 1337:1337 --name my-strapi strapi-local
-4. Access Strapi
-Once the logs say "Welcome back!", open your browser: 👉 http://localhost:1337/admin
+docker network create strapi-net
+2. Start PostgreSQL
+Start the database container with the necessary credentials.
 
-🏗 Project Structure
-├── Dockerfile       # Multi-stage build instructions for Node 20 + Strapi
-├── .dockerignore    # Prevents local node_modules from breaking the container
-└── README.md        # Documentation
+Bash
+
+docker run -d \
+  --name my-postgres \
+  --network strapi-net \
+  -e POSTGRES_USER=strapi \
+  -e POSTGRES_PASSWORD=strapi \
+  -e POSTGRES_DB=strapi \
+  postgres:16-alpine
+3. Build & Run Strapi
+Build the Docker image (optimized for Node 20) and start the application.
+
+Bash
+
+docker build -t strapi-postgres .
+
+docker run -d \
+  --name my-strapi \
+  --network strapi-net \
+  -e DATABASE_CLIENT=postgres \
+  -e DATABASE_HOST=my-postgres \
+  -e DATABASE_PORT=5432 \
+  -e DATABASE_NAME=strapi \
+  -e DATABASE_USERNAME=strapi \
+  -e DATABASE_PASSWORD=strapi \
+  -e DATABASE_SSL=false \
+  strapi-postgres
+4. Start Nginx Proxy
+Start Nginx to forward traffic from localhost to the Strapi container.
+
+Bash
+
+docker run -d \
+  --name my-nginx \
+  --network strapi-net \
+  -p 80:80 \
+  -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf \
+  nginx:alpine
+✅ Verification
+Open your browser to: http://localhost/admin
+
+You should see the Strapi Registration page (served via Port 80).
+
+Create an admin user. The data will be persisted in the PostgreSQL container.
+
+🛠️ Tech Stack
+Runtime: Node.js 20 (Bullseye)
+
+Database: PostgreSQL 16 Alpine
+
+Proxy: Nginx Alpine
+
+Containerization: Docker
