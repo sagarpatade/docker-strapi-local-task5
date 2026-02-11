@@ -11,7 +11,6 @@ This project demonstrates a production-ready, multi-container environment for St
 ## 🏗 Architecture
 The application runs on a custom Docker network (`strapi-net`) to ensure secure, isolated communication between containers.
 
-```mermaid
 graph LR
     User(Browser) -- Port 80 --> Nginx
     subgraph "Docker Network: strapi-net"
